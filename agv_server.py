@@ -86,3 +86,6 @@ def main():
     server = AGVServer(socketio_server_url, socketio_request_event_name, port)
     log.info("AGVServer init finished")
     server.sio_client.wait()
+
+if __name__ == "__main__":
+    main()

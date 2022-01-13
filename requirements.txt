@@ -1,3 +1,4 @@
 minimalmodbus==1.0.2
 pyserial==3.4
 python-socketio==4.6.0
+requests
