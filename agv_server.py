@@ -69,7 +69,9 @@ class AGVServer:
         
         Runs in a separate thread so no problem if this crashed.
         """
-        ret = {"value": self.sensor.value()}
+        val = self.sensor.value()
+        val = [(val & (1 << i)) > 0 for i in range(16)]
+        ret = {"value": val}
         event_name = self.socketio_request_event_name + "Response"
         self.sio_client.emit(event_name, ret)
 
