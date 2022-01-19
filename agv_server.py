@@ -11,7 +11,7 @@ log = logging.getLogger("agv_server")
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setLevel(logging.INFO)
+stdout_handler.setLevel(logging.DEBUG)
 stdout_handler.setFormatter(formatter)
 log.addHandler(stdout_handler)
 
@@ -57,13 +57,27 @@ class AGVGuideSensor:
         except Exception:
             pass
 
+class FakeAGVGuideSensor:
+    def __init__(self):
+        pass
+    def value(self):
+        return 0xaaaa
+
 class AGVServer:
     def __init__(self, socketio_server_url: str, socketio_request_event_name: str, serial_port: str):
-        self.sensor = AGVGuideSensor(serial_port)
+        if run_without_ports:
+            self.sensor = FakeAGVGuideSensor()
+        else:
+            self.sensor = AGVGuideSensor(serial_port)
         self.sio_client = socketio.Client()
         self.sio_client.connect(socketio_server_url)
         self.sio_client.on(socketio_request_event_name, self.sio_handler)
+        self.sio_client.on("hello", self.hello_handler)
         self.socketio_request_event_name = socketio_request_event_name
+    def hello_handler(self):
+        """SocketIO handler for "hello"."""
+        ret = {"name": "AGVGuideSensor"}
+        self.sio_client.emit("helloResponse", ret)
     def sio_handler(self):
         """SocketIO handler for sensor read request.
         
@@ -79,15 +93,22 @@ class AGVServer:
 socketio_server_url = "http://localhost:8080"
 socketio_request_event_name = "AGVGuideSensor"
 
+run_without_ports = True
+
 def main():
     try:
-        port = find_serial_port()[0]
+        if run_without_ports:
+            log.info("Running with fake sensor")
+            port = ""
+        else:
+            port = find_serial_port()[0]
     except IndexError:
         log.fatal("No serial ports detected. Exiting.")
         exit(-1)
     server = AGVServer(socketio_server_url, socketio_request_event_name, port)
     log.info("AGVServer init finished")
-    server.sio_client.wait()
+    while True:
+        server.sio_client.sleep(1)
 
 if __name__ == "__main__":
     main()
